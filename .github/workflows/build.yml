@@ -32,7 +32,7 @@ jobs:
             arch: universal
             target: template_release
           
-          # Android builds (priority)
+          # Android builds
           - os: ubuntu-latest
             platform: android
             arch: arm64
@@ -47,7 +47,7 @@ jobs:
       uses: actions/checkout@v4
       
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         
@@ -66,7 +66,7 @@ jobs:
         git clone https://github.com/godotengine/godot-cpp.git --depth 1 --branch 4.2-stable
         
     - name: Cache godot-cpp build
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: godot-cpp/bin
         key: godot-cpp-${{ matrix.os }}-${{ matrix.platform }}-${{ matrix.arch }}-${{ hashFiles('godot-cpp/**/*.cpp', 'godot-cpp/**/*.hpp') }}
@@ -89,7 +89,7 @@ jobs:
         find . -name "*.dll" -o -name "*.so" -o -name "*.dylib" 2>/dev/null || echo "No libraries found"
         
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: websocket-server-${{ matrix.platform }}-${{ matrix.arch }}
         path: bin/*
@@ -109,7 +109,7 @@ jobs:
         cp addons/websocket_server/websocket_server.gdextension addon-package/addons/websocket_server/
         
     - name: Download all build artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         path: artifacts
         
@@ -128,7 +128,7 @@ jobs:
         cp README.md addon-package/
         
     - name: Upload complete addon package
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: websocket-server-addon-complete
         path: addon-package/
