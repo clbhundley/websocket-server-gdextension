@@ -1,0 +1,134 @@
+name: Build WebSocket Server Extension
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows builds
+          - os: windows-latest
+            platform: windows
+            arch: x86_64
+            target: template_release
+            
+          # Linux builds  
+          - os: ubuntu-latest
+            platform: linux
+            arch: x86_64
+            target: template_release
+            
+          # macOS builds
+          - os: macos-latest
+            platform: macos
+            arch: universal
+            target: template_release
+          
+          # Android builds (priority)
+          - os: ubuntu-latest
+            platform: android
+            arch: arm64
+            target: template_release
+          - os: ubuntu-latest
+            platform: android
+            arch: x86_64
+            target: template_release
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install SCons
+      run: python -m pip install scons
+      
+    - name: Set up Android NDK (for Android builds)
+      if: matrix.platform == 'android'
+      uses: nttld/setup-ndk@v1
+      with:
+        ndk-version: r25c
+        add-to-path: false
+        
+    - name: Clone godot-cpp
+      run: |
+        git clone https://github.com/godotengine/godot-cpp.git --depth 1 --branch 4.2-stable
+        
+    - name: Cache godot-cpp build
+      uses: actions/cache@v3
+      with:
+        path: godot-cpp/bin
+        key: godot-cpp-${{ matrix.os }}-${{ matrix.platform }}-${{ matrix.arch }}-${{ hashFiles('godot-cpp/**/*.cpp', 'godot-cpp/**/*.hpp') }}
+        
+    - name: Build godot-cpp
+      run: |
+        cd godot-cpp
+        scons platform=${{ matrix.platform }} arch=${{ matrix.arch }} target=${{ matrix.target }} -j2
+        
+    - name: Build WebSocket Server Extension
+      run: |
+        scons platform=${{ matrix.platform }} arch=${{ matrix.arch }} target=${{ matrix.target }} -j2
+      env:
+        ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
+        
+    - name: List build outputs (debug)
+      run: |
+        echo "Contents of bin directory:"
+        ls -la bin/ || echo "No bin directory found"
+        find . -name "*.dll" -o -name "*.so" -o -name "*.dylib" 2>/dev/null || echo "No libraries found"
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: websocket-server-${{ matrix.platform }}-${{ matrix.arch }}
+        path: bin/*
+        retention-days: 7
+
+  # Create a combined release package
+  package:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Create addon directory structure
+      run: |
+        mkdir -p addon-package/addons/websocket_server/bin
+        cp addons/websocket_server/websocket_server.gdextension addon-package/addons/websocket_server/
+        
+    - name: Download all build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+        
+    - name: Organize libraries
+      run: |
+        # Copy all built libraries to the addon bin directory
+        find artifacts -name "*.dll" -exec cp {} addon-package/addons/websocket_server/bin/ \;
+        find artifacts -name "*.so" -exec cp {} addon-package/addons/websocket_server/bin/ \;
+        find artifacts -name "*.dylib" -exec cp {} addon-package/addons/websocket_server/bin/ \;
+        
+        echo "Final addon structure:"
+        find addon-package -type f
+        
+    - name: Create README for package
+      run: |
+        cp README.md addon-package/
+        
+    - name: Upload complete addon package
+      uses: actions/upload-artifact@v3
+      with:
+        name: websocket-server-addon-complete
+        path: addon-package/
