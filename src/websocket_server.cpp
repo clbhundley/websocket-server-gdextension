@@ -284,109 +284,98 @@ static bool decode_websocket_frame(const std::vector<uint8_t>& in_buffer,
                                   bool& is_text,
                                   size_t& bytes_consumed) {
     
-    try {
-        // Check if we have enough data to read the header
-        if (in_buffer.size() < 2) {
-            bytes_consumed = 0;
-            return false;
-        }
-        
+    // Check if we have enough data to read the header
+    if (in_buffer.size() < 2) {
         bytes_consumed = 0;
-        
-        // Read first byte
-        uint8_t first_byte = in_buffer[0];
-        bool fin = (first_byte & 0x80) != 0;
-        opcode = first_byte & 0x0F;
-        
-        // Check if this is a control frame
-        bool is_control = (opcode & 0x08) != 0;
-        
-        // Set text flag based on opcode
-        is_text = (opcode == 0x01);
-        
-        // Read second byte
-        uint8_t second_byte = in_buffer[1];
-        bool masked = (second_byte & 0x80) != 0;
-        uint64_t payload_length = second_byte & 0x7F;
-        
-        size_t header_size = 2;
-        
-        // Extended payload length
-        if (payload_length == 126) {
-            // 16-bit length
-            if (in_buffer.size() < 4) {
-                bytes_consumed = 0;
-                return false; // Not enough data
-            }
-            
-            payload_length = ((uint16_t)in_buffer[2] << 8) | in_buffer[3];
-            header_size = 4;
-        } else if (payload_length == 127) {
-            // 64-bit length
-            if (in_buffer.size() < 10) {
-                bytes_consumed = 0;
-                return false; // Not enough data
-            }
-            
-            // We'll only use the lower 32 bits to avoid potential issues
-            payload_length = 0;
-            for (int i = 0; i < 4; i++) {
-                payload_length = (payload_length << 8) | in_buffer[6 + i];
-            }
-            header_size = 10;
-        }
-        
-        // Sanity check on payload length
-        if (payload_length > 100 * 1024 * 1024) {  // 100 MB limit
-            bytes_consumed = header_size;
-            return false;
-        }
-        
-        // Read masking key if masked
-        uint8_t masking_key[4] = {0};
-        if (masked) {
-            if (in_buffer.size() < header_size + 4) {
-                bytes_consumed = 0;
-                return false; // Not enough data
-            }
-            
-            for (int i = 0; i < 4; i++) {
-                masking_key[i] = in_buffer[header_size + i];
-            }
-            
-            header_size += 4;
-        }
-        
-        // Check if we have the full payload
-        if (in_buffer.size() < header_size + payload_length) {
+        return false;
+    }
+    
+    bytes_consumed = 0;
+    
+    // Read first byte
+    uint8_t first_byte = in_buffer[0];
+    bool fin = (first_byte & 0x80) != 0;
+    opcode = first_byte & 0x0F;
+    
+    // Check if this is a control frame
+    bool is_control = (opcode & 0x08) != 0;
+    
+    // Set text flag based on opcode
+    is_text = (opcode == 0x01);
+    
+    // Read second byte
+    uint8_t second_byte = in_buffer[1];
+    bool masked = (second_byte & 0x80) != 0;
+    uint64_t payload_length = second_byte & 0x7F;
+    
+    size_t header_size = 2;
+    
+    // Extended payload length
+    if (payload_length == 126) {
+        // 16-bit length
+        if (in_buffer.size() < 4) {
             bytes_consumed = 0;
             return false; // Not enough data
         }
         
-        // Extract payload
-        out_buffer.resize(payload_length);
-        for (uint64_t i = 0; i < payload_length; i++) {
-            if (masked) {
-                out_buffer[i] = in_buffer[header_size + i] ^ masking_key[i % 4];
-            } else {
-                out_buffer[i] = in_buffer[header_size + i];
-            }
+        payload_length = ((uint16_t)in_buffer[2] << 8) | in_buffer[3];
+        header_size = 4;
+    } else if (payload_length == 127) {
+        // 64-bit length
+        if (in_buffer.size() < 10) {
+            bytes_consumed = 0;
+            return false; // Not enough data
         }
         
-        bytes_consumed = header_size + payload_length;
+        // We'll only use the lower 32 bits to avoid potential issues
+        payload_length = 0;
+        for (int i = 0; i < 4; i++) {
+            payload_length = (payload_length << 8) | in_buffer[6 + i];
+        }
+        header_size = 10;
+    }
+    
+    // Sanity check on payload length
+    if (payload_length > 100 * 1024 * 1024) {  // 100 MB limit
+        bytes_consumed = header_size;
+        return false;
+    }
+    
+    // Read masking key if masked
+    uint8_t masking_key[4] = {0};
+    if (masked) {
+        if (in_buffer.size() < header_size + 4) {
+            bytes_consumed = 0;
+            return false; // Not enough data
+        }
+        
+        for (int i = 0; i < 4; i++) {
+            masking_key[i] = in_buffer[header_size + i];
+        }
+        
+        header_size += 4;
+    }
+    
+    // Check if we have the full payload
+    if (in_buffer.size() < header_size + payload_length) {
+        bytes_consumed = 0;
+        return false; // Not enough data
+    }
+    
+    // Extract payload
+    out_buffer.resize(payload_length);
+    for (uint64_t i = 0; i < payload_length; i++) {
+        if (masked) {
+            out_buffer[i] = in_buffer[header_size + i] ^ masking_key[i % 4];
+        } else {
+            out_buffer[i] = in_buffer[header_size + i];
+        }
+    }
+    
+    bytes_consumed = header_size + payload_length;
 
-        return true;
-    }
-    catch (const std::exception& e) {
-        UtilityFunctions::printerr("Exception in decode_websocket_frame: ", e.what());
-        bytes_consumed = 0;
-        return false;
-    }
-    catch (...) {
-        UtilityFunctions::printerr("Unknown exception in decode_websocket_frame");
-        bytes_consumed = 0;
-        return false;
-    }
+    return true;
+
 }
 
 
@@ -431,53 +420,43 @@ bool WebSocketServer::set_socket_non_blocking(int socket_fd) {
 
 
 bool WebSocketServer::process_websocket_handshake(int client_socket, const std::string& request) {
-    try {
-        UtilityFunctions::print("Processing WebSocket handshake...");
-        
-        // Extract WebSocket key
-        std::string websocket_key;
-        size_t key_pos = request.find("Sec-WebSocket-Key: ");
-        
-        if (key_pos != std::string::npos) {
-            size_t key_end = request.find("\r\n", key_pos);
-            if (key_end != std::string::npos) {
-                websocket_key = request.substr(key_pos + 19, key_end - (key_pos + 19));
-            }
+    UtilityFunctions::print("Processing WebSocket handshake...");
+    
+    // Extract WebSocket key
+    std::string websocket_key;
+    size_t key_pos = request.find("Sec-WebSocket-Key: ");
+    
+    if (key_pos != std::string::npos) {
+        size_t key_end = request.find("\r\n", key_pos);
+        if (key_end != std::string::npos) {
+            websocket_key = request.substr(key_pos + 19, key_end - (key_pos + 19));
         }
-        
-        if (websocket_key.empty()) {
-            UtilityFunctions::printerr("WebSocket handshake failed: No Sec-WebSocket-Key found");
-            return false;
-        }
-        
-        // Generate WebSocket accept key
-        std::string accept_key = calculate_sha1(websocket_key);
-        
-        // Create response
-        std::string response = 
-            "HTTP/1.1 101 Switching Protocols\r\n"
-            "Upgrade: websocket\r\n"
-            "Connection: Upgrade\r\n"
-            "Sec-WebSocket-Accept: " + accept_key + "\r\n"
-            "\r\n";
-        
-        // Send response
-        if (send(client_socket, response.c_str(), response.size(), 0) < 0) {
-            UtilityFunctions::printerr("WebSocket handshake failed: Could not send response");
-            return false;
-        }
-        
-        UtilityFunctions::print("WebSocket handshake completed successfully");
-        return true;
     }
-    catch (const std::exception& e) {
-        UtilityFunctions::printerr("Exception in WebSocket handshake: ", e.what());
+    
+    if (websocket_key.empty()) {
+        UtilityFunctions::printerr("WebSocket handshake failed: No Sec-WebSocket-Key found");
         return false;
     }
-    catch (...) {
-        UtilityFunctions::printerr("Unknown exception in WebSocket handshake");
+    
+    // Generate WebSocket accept key
+    std::string accept_key = calculate_sha1(websocket_key);
+    
+    // Create response
+    std::string response = 
+        "HTTP/1.1 101 Switching Protocols\r\n"
+        "Upgrade: websocket\r\n"
+        "Connection: Upgrade\r\n"
+        "Sec-WebSocket-Accept: " + accept_key + "\r\n"
+        "\r\n";
+    
+    // Send response
+    if (send(client_socket, response.c_str(), response.size(), 0) < 0) {
+        UtilityFunctions::printerr("WebSocket handshake failed: Could not send response");
         return false;
     }
+    
+    UtilityFunctions::print("WebSocket handshake completed successfully");
+    return true;
 }
 
 

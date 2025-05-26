@@ -54,12 +54,23 @@ jobs:
     - name: Install SCons
       run: python -m pip install scons
       
-    - name: Set up Android NDK (for Android builds)
+    - name: Set up Java (required for Android builds)
       if: matrix.platform == 'android'
-      uses: nttld/setup-ndk@v1
+      uses: actions/setup-java@v4
       with:
-        ndk-version: r25c
-        add-to-path: false
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Set up Android SDK and NDK
+      if: matrix.platform == 'android'
+      uses: android-actions/setup-android@v3
+      
+    - name: Install specific Android NDK version
+      if: matrix.platform == 'android'
+      run: |
+        echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;23.2.8568313"
+        echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/23.2.8568313" >> $GITHUB_ENV
+        echo "Android NDK installed at: $ANDROID_HOME/ndk/23.2.8568313"
         
     - name: Clone godot-cpp
       run: |
@@ -71,6 +82,13 @@ jobs:
         path: godot-cpp/bin
         key: godot-cpp-${{ matrix.os }}-${{ matrix.platform }}-${{ matrix.arch }}-${{ hashFiles('extension_api.json', 'godot-cpp/**/*.cpp', 'godot-cpp/**/*.hpp') }}
         
+    - name: Verify Android NDK setup (for Android builds)
+      if: matrix.platform == 'android'
+      run: |
+        echo "ANDROID_NDK_ROOT: $ANDROID_NDK_ROOT"
+        echo "Checking NDK directory:"
+        ls -la $ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/ || echo "NDK toolchains directory not found"
+        
     - name: Build godot-cpp
       run: |
         cd godot-cpp
@@ -79,10 +97,9 @@ jobs:
     - name: Build WebSocket Server Extension
       run: |
         scons platform=${{ matrix.platform }} arch=${{ matrix.arch }} target=${{ matrix.target }} -j2
-      env:
-        ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
         
     - name: List build outputs (debug)
+      shell: bash
       run: |
         echo "Contents of bin directory:"
         ls -la bin/ || echo "No bin directory found"
