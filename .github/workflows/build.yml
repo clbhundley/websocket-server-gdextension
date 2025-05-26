@@ -32,7 +32,7 @@ jobs:
             arch: universal
             target: template_release
           
-          # Android builds
+          # Android builds (priority)
           - os: ubuntu-latest
             platform: android
             arch: arm64
@@ -63,18 +63,18 @@ jobs:
         
     - name: Clone godot-cpp
       run: |
-        git clone https://github.com/godotengine/godot-cpp.git --depth 1 --branch 4.2-stable
+        git clone https://github.com/godotengine/godot-cpp.git --depth 1 --branch 4.4
         
     - name: Cache godot-cpp build
       uses: actions/cache@v4
       with:
         path: godot-cpp/bin
-        key: godot-cpp-${{ matrix.os }}-${{ matrix.platform }}-${{ matrix.arch }}-${{ hashFiles('godot-cpp/**/*.cpp', 'godot-cpp/**/*.hpp') }}
+        key: godot-cpp-${{ matrix.os }}-${{ matrix.platform }}-${{ matrix.arch }}-${{ hashFiles('extension_api.json', 'godot-cpp/**/*.cpp', 'godot-cpp/**/*.hpp') }}
         
     - name: Build godot-cpp
       run: |
         cd godot-cpp
-        scons platform=${{ matrix.platform }} arch=${{ matrix.arch }} target=${{ matrix.target }} -j2
+        scons platform=${{ matrix.platform }} arch=${{ matrix.arch }} target=${{ matrix.target }} generate_bindings=yes custom_api_file=../extension_api.json -j2
         
     - name: Build WebSocket Server Extension
       run: |
