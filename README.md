@@ -8,10 +8,9 @@ A high-performance WebSocket server class for Godot 4
 - **Full WebSocket Protocol Support** - Handles text, binary, and control (ping, pong, close) frames
 - **Thread-Safe Architecture** - Server operations run on a background thread with signal-based communication
 - **WebSocket Frame Buffering** - Handles TCP fragmentation and partial WebSocket frames
-- **Multiple Client Support** - Manage multiple simultaneous WebSocket connections
+- **Multiple Client Support** - Manages multiple simultaneous WebSocket connections
 - **Client Validation** - WebSocket handshake with basic SHA-1 key validation
-- **Message Unmasking** - Handles WebSocket masking protocol for client messages
-- **Production-Ready** - Handles networking edge cases and error conditions
+- **Message Unmasking** - Handles masking protocol for client messages
 
 
 ## Installation
@@ -101,4 +100,4 @@ func _on_data_received(client_id: int, data: PackedByteArray):
 
 ---
 
-*This extension was created to fill the gap left by Godot 4's removal of the WebSocketServer class, providing a robust alternative for networked applications.*
+*This extension was created to fill the gap left by Godot 4's removal of the WebSocketServer class, providing a robust solution for networked applications.*

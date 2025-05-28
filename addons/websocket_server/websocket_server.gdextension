@@ -5,20 +5,16 @@ compatibility_minimum = 4.1
 
 [libraries]
 
-# Windows
-windows.debug.x86_64 = "res://addons/websocket_server/bin/websocket_server.windows.template_debug.x86_64.dll"
+windows.debug.x86_64 = "res://addons/websocket_server/bin/websocket_server.windows.template_release.x86_64.dll"
 windows.release.x86_64 = "res://addons/websocket_server/bin/websocket_server.windows.template_release.x86_64.dll"
 
-# Android
-android.debug.arm64 = "res://addons/websocket_server/bin/websocket_server.android.template_debug.arm64.so"
-android.release.arm64 = "res://addons/websocket_server/bin/websocket_server.android.template_release.arm64.so"
-android.debug.x86_64 = "res://addons/websocket_server/bin/websocket_server.android.template_debug.x86_64.so"
-android.release.x86_64 = "res://addons/websocket_server/bin/websocket_server.android.template_release.x86_64.so"
+android.debug.arm64 = "res://addons/websocket_server/bin/libwebsocket_server.android.template_release.arm64.so"
+android.release.arm64 = "res://addons/websocket_server/bin/libwebsocket_server.android.template_release.arm64.so"
+android.debug.x86_64 = "res://addons/websocket_server/binlibwebsocket_server.android.template_release.x86_64.so"
+android.release.x86_64 = "res://addons/websocket_server/bin/libwebsocket_server.android.template_release.x86_64.so"
 
-# Linux  
-linux.debug.x86_64 = "res://addons/websocket_server/bin/websocket_server.linux.template_debug.x86_64.so"
-linux.release.x86_64 = "res://addons/websocket_server/bin/websocket_server.linux.template_release.x86_64.so"
+linux.debug.x86_64 = "res://addons/websocket_server/bin/libwebsocket_server.linux.template_release.x86_64.so"
+linux.release.x86_64 = "res://addons/websocket_server/bin/libwebsocket_server.linux.template_release.x86_64.so"
 
-# macOS
-macos.debug = "res://addons/websocket_server/bin/websocket_server.macos.template_debug.universal.dylib"
-macos.release = "res://addons/websocket_server/bin/websocket_server.macos.template_release.universal.dylib"
+macos.debug = "res://addons/websocket_server/bin/libwebsocket_server.macos.template_release.universal.dylib"
+macos.release = "res://addons/websocket_server/bin/libwebsocket_server.macos.template_release.universal.dylib"
