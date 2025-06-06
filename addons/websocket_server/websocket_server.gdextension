@@ -10,7 +10,7 @@ windows.release.x86_64 = "res://addons/websocket_server/bin/websocket_server.win
 
 android.debug.arm64 = "res://addons/websocket_server/bin/libwebsocket_server.android.template_release.arm64.so"
 android.release.arm64 = "res://addons/websocket_server/bin/libwebsocket_server.android.template_release.arm64.so"
-android.debug.x86_64 = "res://addons/websocket_server/binlibwebsocket_server.android.template_release.x86_64.so"
+android.debug.x86_64 = "res://addons/websocket_server/bin/libwebsocket_server.android.template_release.x86_64.so"
 android.release.x86_64 = "res://addons/websocket_server/bin/libwebsocket_server.android.template_release.x86_64.so"
 
 linux.debug.x86_64 = "res://addons/websocket_server/bin/libwebsocket_server.linux.template_release.x86_64.so"
