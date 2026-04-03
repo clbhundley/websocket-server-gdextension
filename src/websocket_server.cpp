@@ -596,6 +596,7 @@ void WebSocketServer::server_thread_func() {
                                 if (it != clients.end()) {
                                     it->second.handshake_completed = true;
                                     it->second.is_websocket = true;
+                                    it->second.last_data_time = std::chrono::steady_clock::now();
                                 }
                                 
                                 std::vector<Variant> args = {Variant((int)id)};
@@ -622,6 +623,7 @@ void WebSocketServer::server_thread_func() {
                             std::lock_guard<std::mutex> lock(clients_mutex);
                             auto it = clients.find(id);
                             if (it != clients.end()) {
+                                it->second.last_data_time = std::chrono::steady_clock::now();
                                 // Append new data to the client's buffer
                                 it->second.buffer.insert(
                                     it->second.buffer.end(),
@@ -748,8 +750,29 @@ void WebSocketServer::server_thread_func() {
                 }
             }
         }
+
+        // Check for timed-out clients
+        {
+            auto now = std::chrono::steady_clock::now();
+            std::lock_guard<std::mutex> lock(clients_mutex);
+            for (auto it = clients.begin(); it != clients.end(); ) {
+                if (it->second.handshake_completed) {
+                    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                        now - it->second.last_data_time).count();
+                    if (elapsed >= PING_TIMEOUT_SECONDS) {
+                        uint64_t timed_out_id = it->first;
+                        close_socket(it->second.socket_fd);
+                        it = clients.erase(it);
+                        queue_signal("client_disconnected",
+                            {Variant((int)timed_out_id), Variant(1006)});
+                        continue;
+                    }
+                }
+                ++it;
+            }
+        }
     }
-    
+
     // Clean up all clients
     {
         std::lock_guard<std::mutex> lock(clients_mutex);
@@ -984,6 +1007,18 @@ Error WebSocketServer::broadcast_binary(const PackedByteArray &p_data) {
 }
 
 
+void WebSocketServer::broadcast_ping() {
+    std::lock_guard<std::mutex> lock(clients_mutex);
+    std::string frame = encode_websocket_ping_frame();
+
+    for (const auto& client_pair : clients) {
+        if (client_pair.second.handshake_completed) {
+            send(client_pair.second.socket_fd, frame.c_str(), frame.size(), 0);
+        }
+    }
+}
+
+
 void WebSocketServer::_bind_methods() {
     // Register methods
     ClassDB::bind_method(D_METHOD("start", "port", "host"), &WebSocketServer::start, DEFVAL(8080), DEFVAL("0.0.0.0"));
@@ -995,6 +1030,7 @@ void WebSocketServer::_bind_methods() {
     ClassDB::bind_method(D_METHOD("send_binary", "client_id", "data"), &WebSocketServer::send_binary);
     ClassDB::bind_method(D_METHOD("broadcast_text", "message"), &WebSocketServer::broadcast_text);
     ClassDB::bind_method(D_METHOD("broadcast_binary", "data"), &WebSocketServer::broadcast_binary);
+    ClassDB::bind_method(D_METHOD("broadcast_ping"), &WebSocketServer::broadcast_ping);
     ClassDB::bind_method(D_METHOD("process"), &WebSocketServer::process);
     
     // Register signals

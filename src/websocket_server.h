@@ -10,6 +10,7 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <chrono>
 #include <unordered_map>
 #include <memory>
 #include <vector>
@@ -48,7 +49,10 @@ private:
         std::vector<uint8_t> buffer;
         std::string websocket_key;
         bool handshake_completed;
+        std::chrono::steady_clock::time_point last_data_time;
     };
+
+    static constexpr int PING_TIMEOUT_SECONDS = 5;
     
     int server_socket;
     std::unordered_map<uint64_t, ClientConnection> clients;
@@ -102,6 +106,7 @@ public:
     Error send_binary(int p_client_id, const PackedByteArray &p_data);
     Error broadcast_text(const String &p_message);
     Error broadcast_binary(const PackedByteArray &p_data);
+    void broadcast_ping();
 };
 
 }

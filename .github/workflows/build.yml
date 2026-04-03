@@ -102,12 +102,54 @@ jobs:
       run: |
         scons platform=${{ matrix.platform }} arch=${{ matrix.arch }} target=${{ matrix.target }} -j2
         
-    - name: List build outputs (debug)
+    - name: Verify build output
       shell: bash
       run: |
-        echo "Contents of bin directory:"
-        ls -la bin/ || echo "No bin directory found"
-        find . -name "*.dll" -o -name "*.so" -o -name "*.dylib" 2>/dev/null || echo "No libraries found"
+        echo "Verifying ${{ matrix.platform }}-${{ matrix.arch }} build..."
+
+        # Check that a binary was produced
+        lib=$(find bin/ -name "*.dll" -o -name "*.so" -o -name "*.dylib" 2>/dev/null | head -1)
+        if [ -z "$lib" ]; then
+          echo "FAIL: No library found in bin/"
+          exit 1
+        fi
+        echo "Found: $lib"
+        ls -la "$lib"
+
+        # Check file isn't suspiciously small (empty/stub build)
+        size=$(stat -c%s "$lib" 2>/dev/null || stat -f%z "$lib" 2>/dev/null)
+        if [ "$size" -lt 10240 ]; then
+          echo "FAIL: Library is only $size bytes — likely a failed build"
+          exit 1
+        fi
+        echo "Size OK: $size bytes"
+
+        # Platform-specific checks
+        case "${{ matrix.platform }}" in
+          macos)
+            echo "--- macOS dependency check ---"
+            otool -L "$lib"
+            if otool -L "$lib" | grep -q '/opt/homebrew\|/usr/local'; then
+              echo "FAIL: References Homebrew/local paths"
+              exit 1
+            fi
+            echo "--- Checking init symbol ---"
+            nm -g "$lib" | grep "websocket_server_library_init" || { echo "FAIL: Missing init symbol"; exit 1; }
+            ;;
+          linux)
+            echo "--- Linux dependency check ---"
+            ldd "$lib" || true
+            echo "--- Checking init symbol ---"
+            nm -D "$lib" | grep "websocket_server_library_init" || { echo "FAIL: Missing init symbol"; exit 1; }
+            ;;
+          windows)
+            echo "--- Windows: size check passed ---"
+            ;;
+          android)
+            echo "--- Android: size check passed ---"
+            ;;
+        esac
+        echo "PASS: ${{ matrix.platform }}-${{ matrix.arch }}"
         
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4

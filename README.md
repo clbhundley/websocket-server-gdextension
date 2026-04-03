@@ -84,6 +84,11 @@ func _on_data_received(client_id: int, data: PackedByteArray):
 - `Error broadcast_text(String message)` - Send text message to all clients
 - `Error broadcast_binary(PackedByteArray data)` - Send binary data to all clients
 
+#### Connection Health
+- `void broadcast_ping()` - Send a WebSocket ping frame to all clients
+
+Clients that stop responding to pings (or sending any data) are automatically disconnected after 5 seconds, emitting `client_disconnected` with code `1006` (Abnormal Closure). Call `broadcast_ping()` on a timer to enable dead connection detection.
+
 ### Signals
 
 - `client_connected(client_id: int)` - Emitted when a client connects
