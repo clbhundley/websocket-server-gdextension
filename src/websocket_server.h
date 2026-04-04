@@ -7,6 +7,7 @@
 #include <godot_cpp/variant/typed_array.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
+#include <string>
 #include <thread>
 #include <mutex>
 #include <atomic>
